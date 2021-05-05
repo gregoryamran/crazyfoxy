@@ -1,0 +1,10 @@
+DP 900 Study Notes
+
+What is data?
+Data is a collection of facts such as numbers, descriptions, and observations used in decision making. You can classify data as structured, semi-structured, or unstructured.
+
+Semi-structured data is information that doesn't reside in a relational database but still has some structure to it. Examples include documents held in JavaScript Object Notation (JSON) format.
+
+There are other types of semi-structured data as well. Examples include key-value stores and graph databases.
+A key-value store is similar to a relational table, except that each row can have any number of columns. The image below shows an example of key-value data.
+
