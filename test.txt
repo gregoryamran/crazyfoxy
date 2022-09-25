@@ -1,0 +1,134 @@
+from datetime import datetime
+from airflow import DAG
+from airflow.operators.dummy_operator import DummyOperator
+from airflow.operators.python_operator import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+from airflow.models.xcom import XCom
+
+import time 
+ 
+
+dag = DAG(
+          'housekeeping',           
+           schedule_interval=None,
+           max_active_runs = 1 , 
+           start_date=datetime(2017, 3, 20), 
+           catchup=False
+      ) 
+
+def read_config(dag_run, *kwargs):
+    print(dag_run.conf)
+    # print(dag_run)
+    # print(kwargs)
+   
+
+def prepare_command(**context):
+    dag_run_data = context['dag_run'].conf['data']
+    print(dag_run_data['analyze_command'])
+    ti = context['ti']
+    ti.xcom_push(key="analyze_command", value=str(dag_run_data['analyze_command']).split(';')) 
+    return 'trigger_id2'
+
+
+
+def final_status(**context):
+    ti = context['ti']
+    c = ti.xcom_pull( key="analyze_command_completed") 
+    if c is None:
+        c = [] 
+    key_value = ti.xcom_pull(task_ids='prepare_command', key="analyze_command") 
+    print(key_value[0])
+    c.append(key_value[0])    
+    ti.xcom_push(key="analyze_command_completed", value=c) 
+    
+    ti.xcom_push(key="analyze_command_completed", value=c) 
+    
+    print('final status')
+
+def trigger(context, dag_run_obj):
+    dag_run_obj.payload = {
+        "message": context["dag_run"].conf["message"],
+        "day": context["dag_run"].conf["day"]
+    }
+    return dag_run_obj
+
+trigger_step = TriggerDagRunOperator(
+    task_id="trigger_modelling",
+    trigger_dag_id="Dummy_Modelling",
+    python_callable=trigger,
+    dag=dag
+)
+
+def print_event_generator():
+    time.sleep(2)
+    return 'Hello world from first Airflow DAG!'
+
+# TASK 
+read_config = PythonOperator(
+    task_id='read_config',
+    provide_context=True,
+    python_callable=read_config,
+    dag=dag,
+)
+
+prepare_command = PythonOperator(
+    task_id='prepare_command',
+    provide_context=True,
+    python_callable=prepare_command,
+    dag=dag,
+)
+
+
+
+# trigger_id = TriggerDagRunOperator(
+#     task_id="trigger_id",
+#     trigger_dag_id="hello_world", 
+#     conf={"name": "Gregory "},
+#     dag=dag,
+# )
+
+
+# trigger_id2 = TriggerDagRunOperator(
+#     task_id="trigger_id2",
+#     trigger_dag_id="hello_world", 
+#     conf={"name": "Gregory 2  "},
+#     dag=dag,
+# )
+
+
+final_status = PythonOperator(
+    task_id='final_status',
+    provide_context=True,
+    python_callable=final_status,
+    dag=dag,
+)
+
+read_config >> prepare_command >> [trigger  ] >> final_status
+
+# read_config >> prepare_command >> final_status
+
+
+
+
+# generate_event = PythonOperator(task_id='generate_event', python_callable=print_event_generator, dag=dag)
+
+
+# trigger = TriggerDagRunOperator(
+#     task_id="trigger_id",
+#     trigger_dag_id="hello_world", 
+#     conf={"name": "Gregory "},
+#     dag=dag,
+# )
+
+# generate_event >> trigger
+
+# 
+# 
+# docker run -d -p 8080:8080 -v C:\Users\d_ros\Downloads\temp:/usr/local/airflow/dags puckel/docker-airflow webserver
+# docker run -d -p 8080:8080 -v C:\Users\d_ros\Downloads\temp:/usr/local/airflow/dags apache/airflow 
+# docker run -it -p 8080:8080 -v C:\Users\d_ros\Downloads\temp:/opt/airflow/dags hello_airflow webserver
+# 
+# dag_id = 'fake_dag_id'
+# dag_runs = DagRun.find(dag_id=dag_id)
+# for dag_run in dag_runs:
+#       print(dag_run.state)
